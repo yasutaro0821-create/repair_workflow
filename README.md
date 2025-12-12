@@ -140,22 +140,45 @@ Google Apps Script + Gemini AI を使用した修繕報告の自動処理・稟�
 
 ## セットアップ手順
 
-### 1. Claspのインストール
+### 方法1: Claspを使用（推奨）
+
+#### 1. Claspのインストール
 ```powershell
 npm install -g @google/clasp
 clasp login
 ```
 
-### 2. プロジェクトの初期化
+#### 2. プロジェクトの初期化
 ```powershell
 cd C:\Users\yasut\repair_workflow
 clasp pull  # 既存のコードを取得（初回）
 ```
 
-### 3. コードのプッシュ
+#### 3. コードのプッシュ
 ```powershell
 clasp push  # ローカル → GAS
 ```
+
+**注意**: `clasp push`で「Request contains an invalid argument.」エラーが出る場合、方法2（手動デプロイ）を使用してください。
+
+### 方法2: GASエディタで手動デプロイ
+
+1. **GASエディタを開く**
+   - URL: https://script.google.com/home/projects/AKfycby6Nc-_Ko4ju0VxAVAYX6qYm8WmycqGfOIGTzFHupOiRwEjfQ1qo_6tD9VGlEfMAx9k2A/edit
+
+2. **既存のコードを削除**
+   - 左側のファイル一覧から既存の`.gs`ファイルを削除
+
+3. **新しいファイルを作成**
+   - 「+」ボタンで「スクリプト」を追加
+   - ファイル名を `main` に変更
+
+4. **コードをコピー＆ペースト**
+   - `src/main.gs` の内容をすべてコピー
+   - GASエディタに貼り付け
+
+5. **保存**
+   - Ctrl+S で保存
 
 ### 4. トリガーの設定
 1. GASエディタを開く（`clasp open`）
