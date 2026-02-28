@@ -1390,6 +1390,17 @@ function sendDraftNotification(repairId, docUrl, rowNum, title) {
                     }
                   },
                   {
+                    text: '📊 修繕リスト',
+                    onClick: {
+                      openLink: {
+                        url: `https://docs.google.com/spreadsheets/d/${CONFIG.REPAIR_SYSTEM_SHEET_ID}/edit`
+                      }
+                    },
+                    icon: {
+                      knownIcon: 'INVITE'
+                    }
+                  },
+                  {
                     text: '✅ 正式申請する',
                     onClick: {
                       openLink: {
@@ -1408,7 +1419,7 @@ function sendDraftNotification(repairId, docUrl, rowNum, title) {
       }
     }
   };
-  
+
   sendChatMessage(card);
 }
 
@@ -2662,26 +2673,42 @@ function createErrorHtml(message) {
 }
 
 // ====== トリガー設定 ======
+// PWA移行により、メールトリガーは不要になりました。
+// 必要に応じて setupTrigger() で再有効化できます。
 function setupTrigger() {
   // 既存のトリガーを削除
   const triggers = ScriptApp.getProjectTriggers();
   Logger.log(`【トリガー設定】既存のトリガー数: ${triggers.length}`);
-  
+
   for (const trigger of triggers) {
     if (trigger.getHandlerFunction() === 'processRepairEmails') {
       ScriptApp.deleteTrigger(trigger);
       Logger.log(`【トリガー設定】既存のトリガーを削除: ${trigger.getUniqueId()}`);
     }
   }
-  
+
   // 新しいトリガーを作成（5分ごと）
   const newTrigger = ScriptApp.newTrigger('processRepairEmails')
     .timeBased()
     .everyMinutes(5)
     .create();
-  
+
   Logger.log(`【トリガー設定】新しいトリガーを作成しました: ${newTrigger.getUniqueId()}`);
   Logger.log('トリガーを設定しました（5分ごとに実行）');
+}
+
+// メールトリガーを無効化（PWA移行後に実行）
+function disableEmailTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  let deleted = 0;
+  for (const trigger of triggers) {
+    if (trigger.getHandlerFunction() === 'processRepairEmails') {
+      ScriptApp.deleteTrigger(trigger);
+      deleted++;
+      Logger.log(`【トリガー削除】processRepairEmails トリガーを削除: ${trigger.getUniqueId()}`);
+    }
+  }
+  Logger.log(`【トリガー削除】合計 ${deleted} 件のメールトリガーを削除しました`);
 }
 
 // ====== トリガー確認関数（デバッグ用） ======
