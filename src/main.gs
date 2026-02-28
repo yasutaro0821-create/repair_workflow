@@ -1610,12 +1610,32 @@ function sendErrorNotification(message) {
 // ====== Webアプリ（doPost：コメント送信） ======
 function doPost(e) {
   try {
+    // === PWAからの修繕報告（JSON POST）===
+    if (e.postData && e.postData.type === 'application/json') {
+      try {
+        const jsonData = JSON.parse(e.postData.contents);
+        if (jsonData.action === 'repair_report') {
+          Logger.log('【PWA】修繕報告を受信しました');
+          const result = processRepairFromPWA(jsonData);
+          return ContentService.createTextOutput(JSON.stringify(result))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      } catch (jsonError) {
+        Logger.log(`【PWA】JSONパースエラー: ${jsonError.toString()}`);
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          error: jsonError.toString()
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    // === 既存のコメント処理 ===
     // POSTデータからパラメータを取得
     let action = '';
     let row = 0;
     let type = '';
     let comment = '';
-    
+
     // e.parameterから取得を試行
     if (e.parameter) {
       action = e.parameter.action || '';
@@ -1623,7 +1643,7 @@ function doPost(e) {
       type = e.parameter.type || '';
       comment = e.parameter.comment || '';
     }
-    
+
     // e.postDataからも取得を試行（念のため）
     if (!comment && e.postData && e.postData.contents) {
       try {
@@ -1640,11 +1660,11 @@ function doPost(e) {
         }
       }
     }
-    
+
     if (!row || row < 2) {
       return HtmlService.createHtmlOutput('<html><body><h1>エラー: 無効な行番号</h1></body></html>');
     }
-    
+
     if (action === 'comment') {
       const sheet = getSheet();
       // e.parameterにcommentを設定（handleComment関数で使用）
@@ -1654,11 +1674,121 @@ function doPost(e) {
       e.parameter.comment = comment;
       return handleComment(sheet, row, type, e);
     }
-    
+
     return HtmlService.createHtmlOutput('<html><body><h1>エラー: 無効なアクション</h1></body></html>');
   } catch (error) {
     Logger.log(`doPostエラー: ${error.toString()}`);
+    // PWA JSONリクエストの場合はJSONでエラーを返す
+    if (e.postData && e.postData.type === 'application/json') {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: error.toString()
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
     return HtmlService.createHtmlOutput(`<html><body><h1>エラー</h1><p>${error.toString()}</p></body></html>`);
+  }
+}
+
+// ====== PWAからの修繕報告処理 ======
+function processRepairFromPWA(data) {
+  try {
+    Logger.log('【PWA処理開始】修繕報告をPWAから処理します');
+
+    const reporterName = data.reporter || '不明';
+    const description = data.description || '';
+    const base64Images = data.images || [];
+
+    Logger.log(`【PWA処理】報告者: ${reporterName}, 画像数: ${base64Images.length}`);
+
+    // base64画像をBlobに変換してDriveにアップロード
+    const folder = DriveApp.getFolderById(CONFIG.FOLDER_ID);
+    const imageUrls = [];
+    const imageBlobs = [];
+    const geminiImages = [];
+
+    for (let i = 0; i < Math.min(base64Images.length, 3); i++) {
+      try {
+        const imgData = base64Images[i];
+        // data:image/jpeg;base64,xxxxx の形式からbase64部分を取得
+        const base64Match = imgData.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (!base64Match) {
+          Logger.log(`【PWA処理】画像${i + 1}: 無効なbase64形式`);
+          continue;
+        }
+
+        const mimeType = base64Match[1];
+        const base64Content = base64Match[2];
+        const blob = Utilities.newBlob(Utilities.base64Decode(base64Content), mimeType, `repair_${Date.now()}_${i + 1}.jpg`);
+
+        // Driveにアップロード
+        const file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        const fileUrl = file.getUrl();
+        imageUrls.push(fileUrl);
+        imageBlobs.push(blob);
+
+        // Gemini用の画像データ
+        geminiImages.push({
+          mimeType: mimeType,
+          data: base64Content
+        });
+
+        Logger.log(`【PWA処理】画像${i + 1}をDriveにアップロード: ${fileUrl}`);
+      } catch (imgError) {
+        Logger.log(`【PWA処理】画像${i + 1}のアップロードエラー: ${imgError.toString()}`);
+      }
+    }
+
+    // Gemini AIで解析
+    Logger.log('【PWA処理】Gemini AIで解析を開始します');
+    const aiResult = analyzeWithGemini(description, geminiImages, '修繕依頼');
+    Logger.log(`【PWA処理】AI解析完了: ${aiResult.substring(0, 100)}...`);
+
+    // AI結果をパース
+    const repairId = generateRepairId();
+    const rowData = parseAIResult(aiResult, repairId, reporterName, description, imageUrls);
+
+    // スプレッドシートに書き込み
+    const sheet = getSheet();
+    const rowNum = sheet.getLastRow() + 1;
+    Logger.log(`【PWA処理】スプレッドシートに書き込み: 行${rowNum}`);
+    writeRowToSheet(sheet, rowNum, rowData);
+
+    // Docsを生成
+    Logger.log('【PWA処理】稟議書Docsを生成します');
+    const docUrl = createOrUpdateRingiDoc(rowData, repairId, imageBlobs);
+    Logger.log(`【PWA処理】Docs生成完了: ${docUrl}`);
+
+    // スプレッドシートにDocs URLを記録
+    sheet.getRange(rowNum, COL.RINGI_ID + 1).setValue(docUrl);
+
+    // 備考にPWAからの報告であることを記録
+    const notesCell = sheet.getRange(rowNum, COL.NOTES + 1);
+    notesCell.setValue(`PWA報告 ${getTodayTokyo()}`);
+
+    SpreadsheetApp.flush();
+
+    // Chat通知を送信（下書き通知）
+    const area = rowData[COL.AREA] || '';
+    const location = rowData[COL.LOCATION_DETAIL] || '';
+    const title = `${area} ${location}`.trim() || '修繕案件';
+    Logger.log('【PWA処理】Chat通知を送信します');
+    sendDraftNotification(repairId, docUrl, rowNum, title);
+
+    Logger.log(`【PWA処理完了】修繕ID: ${repairId}, 行${rowNum}`);
+
+    return {
+      success: true,
+      repairId: repairId,
+      message: `修繕報告を受け付けました（${repairId}）`
+    };
+  } catch (error) {
+    Logger.log(`【PWA処理エラー】${error.toString()}`);
+    Logger.log(`【PWA処理エラー】スタック: ${error.stack}`);
+    return {
+      success: false,
+      error: error.toString()
+    };
   }
 }
 

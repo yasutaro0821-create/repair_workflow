@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA Icon Generator - mt. inn 修繕報告</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+      color: #1a73e8;
+      font-size: 28px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 40px;
+      font-size: 14px;
+    }
+    .icon-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      justify-content: center;
+    }
+    .icon-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .icon-card h2 {
+      font-size: 18px;
+      margin-bottom: 4px;
+      color: #1a73e8;
+    }
+    .icon-card .dimensions {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 20px;
+    }
+    canvas {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .btn {
+      display: inline-block;
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #1557b0;
+    }
+    .instructions {
+      margin-top: 40px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px 30px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .instructions h3 {
+      color: #1a73e8;
+      margin-bottom: 12px;
+    }
+    .instructions ol {
+      padding-left: 20px;
+      line-height: 1.8;
+      color: #555;
+    }
+    .instructions code {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #4caf50;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PWA Icon Generator</h1>
+    <p class="subtitle">mt. inn 修繕報告 - アイコン生成ツール</p>
+
+    <div class="icon-section">
+      <!-- 192x192 Icon -->
+      <div class="icon-card">
+        <h2>Standard Icon</h2>
+        <p class="dimensions">192 x 192 px</p>
+        <canvas id="canvas192" width="192" height="192"></canvas>
+        <button class="btn" onclick="downloadIcon(192)">Download PNG (192x192)</button>
+        <p class="status" id="status192"></p>
+      </div>
+
+      <!-- 512x512 Icon -->
+      <div class="icon-card">
+        <h2>High-Res Icon</h2>
+        <p class="dimensions">512 x 512 px</p>
+        <canvas id="canvas512" width="512" height="512" style="max-width: 256px; max-height: 256px;"></canvas>
+        <button class="btn" onclick="downloadIcon(512)">Download PNG (512x512)</button>
+        <p class="status" id="status512"></p>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <h3>使い方 / Instructions</h3>
+      <ol>
+        <li>このページをブラウザで開くと、アイコンが自動生成されます。</li>
+        <li>「Download PNG」ボタンをクリックして PNG ファイルをダウンロードします。</li>
+        <li>ダウンロードしたファイルを <code>icon-192.png</code> と <code>icon-512.png</code> にリネームします。</li>
+        <li><code>pwa/icons/</code> フォルダに配置してください。</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    function drawIcon(ctx, size) {
+      const s = size;
+      const r = Math.round(s * 0.167); // corner radius
+
+      // --- Background with rounded rect ---
+      const grad = ctx.createLinearGradient(0, 0, s, s);
+      grad.addColorStop(0, '#1a73e8');
+      grad.addColorStop(1, '#1557b0');
+
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(s - r, 0);
+      ctx.quadraticCurveTo(s, 0, s, r);
+      ctx.lineTo(s, s - r);
+      ctx.quadraticCurveTo(s, s, s - r, s);
+      ctx.lineTo(r, s);
+      ctx.quadraticCurveTo(0, s, 0, s - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // --- Wrench icon ---
+      const cx = s / 2;
+      const cy = s / 2;
+      const scale = s / 192;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      // Wrench shaft
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 10 * scale;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(-38 * scale, -38 * scale);
+      ctx.lineTo(38 * scale, 38 * scale);
+      ctx.stroke();
+
+      // Wrench head (top-left) - open jaw
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      const headR = 20 * scale;
+      const hx = -38 * scale;
+      const hy = -38 * scale;
+      // Draw wrench head as a fan shape
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(hx - 18 * scale, hy + 6 * scale);
+      ctx.arc(hx - 6 * scale, hy - 6 * scale, headR, Math.PI * 0.6, -Math.PI * 0.1, true);
+      ctx.lineTo(hx + 6 * scale, hy - 18 * scale);
+      ctx.closePath();
+      ctx.fill();
+
+      // Jaw opening cut
+      ctx.beginPath();
+      ctx.arc(hx - 6 * scale, hy - 6 * scale, headR * 0.55, Math.PI * 0.6, -Math.PI * 0.1, true);
+      ctx.strokeStyle = '#1a73e8';
+      ctx.lineWidth = 4 * scale;
+      ctx.stroke();
+
+      // Wrench head (bottom-right) - box end
+      const bx = 42 * scale;
+      const by = 42 * scale;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(bx, by, 14 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Box end hole
+      ctx.fillStyle = '#1a73e8';
+      ctx.beginPath();
+      ctx.arc(bx, by, 6 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      // --- Hotel building accent at bottom ---
+      const buildY = s * 0.74;
+      const buildW = s * 0.21;
+      const buildH = s * 0.073;
+      const buildX = cx - buildW / 2;
+
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      roundRect(ctx, buildX, buildY, buildW, buildH, 2 * scale);
+      ctx.fill();
+
+      // Windows
+      const winW = 6 * scale;
+      const winH = 6 * scale;
+      const winY = buildY + (buildH - winH) / 2;
+      const winGap = 4 * scale;
+      const totalWins = 3;
+      const totalWinWidth = totalWins * winW + (totalWins - 1) * winGap;
+      let winStartX = cx - totalWinWidth / 2;
+
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      for (let i = 0; i < totalWins; i++) {
+        const wx = winStartX + i * (winW + winGap);
+        roundRect(ctx, wx, winY, winW, winH, 1 * scale);
+        ctx.fill();
+      }
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function downloadIcon(size) {
+      const canvas = document.getElementById('canvas' + size);
+      const link = document.createElement('a');
+      link.download = 'icon-' + size + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+
+      const status = document.getElementById('status' + size);
+      status.textContent = 'icon-' + size + '.png downloaded!';
+      setTimeout(function() {
+        status.textContent = '';
+      }, 3000);
+    }
+
+    // Render icons on page load
+    window.addEventListener('DOMContentLoaded', function() {
+      var sizes = [192, 512];
+      for (var i = 0; i < sizes.length; i++) {
+        var size = sizes[i];
+        var canvas = document.getElementById('canvas' + size);
+        var ctx = canvas.getContext('2d');
+        drawIcon(ctx, size);
+      }
+    });
+  </script>
+</body>
+</html>

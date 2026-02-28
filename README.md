@@ -1,39 +1,55 @@
-# mt. inn 修繕稟議システム v2.0 (Gemini 3.0 Pro版)
+# mt. inn 修繕稟議システム v3.0 (PWA + Gemini AI)
 
-Google Apps Script + Gemini AI を使用した修繕報告の自動処理・稟議申請システムです。
+Google Apps Script + Gemini AI + PWA を使用した修繕報告の自動処理・稟議申請システムです。
 
 ## 目的
 
-- 現場からの修繕報告メールを自動検知
-- Gemini 3.0 Proで画像・本文を解析（Google検索ツール有効）
+- **PWAでiPhoneから直接報告**（写真撮影 + 音声入力）
+- Gemini AIで画像・本文を自動解析
 - 稟議書を自動生成
 - Chat通知（Cards V2ボタン付き）でワンタップ承認フロー
 - スプレッドシートで全工程を管理
 
+## システム構成
+
+```
+[iPhone PWA] --POST--> [GAS Web App]
+                            |
+                 ┌──────────┼──────────┐
+                 v          v          v
+            スプレッドシート  稟議書Docs  Chat通知
+```
+
 ## 主な機能
 
-### 1. メール受信処理
+### 1. PWA 修繕報告アプリ（NEW）
+- iPhoneのホーム画面に追加してネイティブアプリのように使用
+- カメラで写真撮影（最大3枚、自動リサイズ）
+- 音声入力で修繕内容を説明（日本語対応）
+- オフライン対応（オンライン復帰時に自動送信）
+
+### 2. メール受信処理（従来方式も維持）
 - `subject:修繕依頼` のメールを自動検知（35分以内）
 - 画像添付を自動取得
 - 未読メールを処理後、既読にマーク
 
-### 2. AI解析（Gemini 3.0 Pro）
+### 3. AI解析（Gemini）
 - 画像と本文から状況分析
 - 原因特定・見積もり算出
 - **Google検索ツールを使用して部材・業者の実在URLを取得**（ハルシネーション防止）
 - 重要度ランク（A/B/C）の自動判定
 
-### 3. 稟議書自動生成
+### 4. 稟議書自動生成
 - テンプレートDocsをコピー
 - AI解析結果を自動埋め込み
 - ドライブフォルダに保存
 
-### 4. Chat通知（Cards V2）
+### 5. Chat通知（Cards V2）
 - **下書き時**: 「Docs確認・修正」「正式申請する」ボタン
 - **申請時**: 「承認する」「否決する」「コメント」ボタン
 - ワンタップでアクション実行
 
-### 5. Webアプリ
+### 6. Webアプリ（承認フロー）
 - ボタンアクション（`apply`, `approve`, `reject`）を処理
 - iPhone対応の完了画面を表示
 - ステータス更新とログ記録
@@ -138,110 +154,117 @@ Google Apps Script + Gemini AI を使用した修繕報告の自動処理・稟�
 ### WebアプリURL
 - デプロイ後に `CONFIG.SCRIPT_WEB_APP_URL` を更新してください
 
+## ファイル構成
+
+```
+repair_workflow/
+├── src/
+│   ├── main.gs              # GASメインスクリプト（バックエンド）
+│   └── appsscript.json      # GAS設定
+├── pwa/                      # PWAフロントエンド
+│   ├── index.html            # 報告フォーム
+│   ├── manifest.json         # PWA設定
+│   ├── sw.js                 # Service Worker
+│   ├── css/style.css         # スタイル（iPhone最適化）
+│   ├── js/
+│   │   ├── app.js            # メインロジック
+│   │   ├── camera.js         # カメラ・画像リサイズ
+│   │   └── voice.js          # 音声入力
+│   └── icons/                # PWAアイコン
+├── docs/
+│   └── requirements.md       # 要件定義書
+└── README.md
+```
+
 ## セットアップ手順
 
-### 方法1: Claspを使用（推奨）
+### A. PWA セットアップ
 
-#### 1. Claspのインストール
-```powershell
+#### 1. GitHub Pages を有効化
+1. GitHub リポジトリの Settings → Pages
+2. Source: `Deploy from a branch`
+3. Branch: `main`、フォルダ: `/ (root)`
+4. Save
+
+#### 2. PWA アイコン生成
+1. `pwa/icons/generate-icons.html` をブラウザで開く
+2. 「Download PNG」ボタンで192x192と512x512のアイコンを保存
+3. `pwa/icons/` フォルダに配置
+
+#### 3. GAS API URL の設定
+- `pwa/js/app.js` の `GAS_API_URL` を実際のデプロイURLに更新
+
+#### 4. iPhoneにインストール
+1. Safari で PWA の URL を開く（`https://<username>.github.io/repair_workflow/pwa/`）
+2. 共有ボタン → 「ホーム画面に追加」
+3. アプリとして起動
+
+### B. GAS バックエンド セットアップ
+
+#### 1. コードのデプロイ
+**方法1: Clasp（推奨）**
+```bash
 npm install -g @google/clasp
 clasp login
+clasp push
 ```
 
-#### 2. プロジェクトの初期化
-```powershell
-cd C:\Users\yasut\repair_workflow
-clasp pull  # 既存のコードを取得（初回）
-```
+**方法2: 手動**
+1. GASエディタを開く
+2. `src/main.gs` の内容をコピー＆ペースト
+3. 保存
 
-#### 3. コードのプッシュ
-```powershell
-clasp push  # ローカル → GAS
-```
-
-**注意**: `clasp push`で「Request contains an invalid argument.」エラーが出る場合、方法2（手動デプロイ）を使用してください。
-
-### 方法2: GASエディタで手動デプロイ
-
-1. **GASエディタを開く**
-   - URL: https://script.google.com/home/projects/AKfycby6Nc-_Ko4ju0VxAVAYX6qYm8WmycqGfOIGTzFHupOiRwEjfQ1qo_6tD9VGlEfMAx9k2A/edit
-
-2. **既存のコードを削除**
-   - 左側のファイル一覧から既存の`.gs`ファイルを削除
-
-3. **新しいファイルを作成**
-   - 「+」ボタンで「スクリプト」を追加
-   - ファイル名を `main` に変更
-
-4. **コードをコピー＆ペースト**
-   - `src/main.gs` の内容をすべてコピー
-   - GASエディタに貼り付け
-
-5. **保存**
-   - Ctrl+S で保存
-
-### 4. トリガーの設定
-1. GASエディタを開く（`clasp open`）
-2. `setupTrigger()` 関数を実行して、5分ごとのトリガーを設定
-3. または、手動でトリガーを作成:
-   - 「トリガー」タブを開く
-   - 「トリガーを追加」
-   - 関数: `processRepairEmails`
-   - イベントのソース: 「時間主導型」
-   - 時間ベースのトリガー: 「5分おき」
-
-### 5. Webアプリのデプロイ
+#### 2. Webアプリのデプロイ
 1. GASエディタで「デプロイ」→「新しいデプロイ」
-2. 種類を選択: 「ウェブアプリ」
-3. 説明: 「修繕稟議システム v2.0」
-4. 次のユーザーとして実行: 「自分」
-5. アクセス権限: 「全員（匿名ユーザーを含む）」
-6. 「デプロイ」をクリック
-7. デプロイ後、表示されるURLをコピー
-8. コード内の `CONFIG.SCRIPT_WEB_APP_URL` を更新:
-   ```javascript
-   SCRIPT_WEB_APP_URL: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec',
-   ```
-9. 再度 `clasp push` を実行
-10. GASエディタで「デプロイ」→「管理デプロイ」→「新しいバージョン」で再デプロイ
+2. 種類: 「ウェブアプリ」
+3. 次のユーザーとして実行: 「自分」
+4. アクセス権限: 「全員（匿名ユーザーを含む）」
+5. デプロイ後のURLを `pwa/js/app.js` の `GAS_API_URL` と `CONFIG.SCRIPT_WEB_APP_URL` に設定
 
-### 6. 動作確認
-1. テストメールを送信:
-   - 件名: `修繕依頼`
-   - 本文: 修繕箇所の説明
-   - 添付: 写真（任意）
-2. 5分以内にChat通知が届くことを確認
-3. 「正式申請する」ボタンをクリックして動作確認
+#### 3. トリガーの設定（メール処理用）
+- `processRepairEmails` を5分ごとに実行するトリガーを設定
 
 ## 使用方法
 
-### メール送信
-現場から以下の形式でメールを送信:
-- **件名**: `修繕依頼`
-- **本文**: 修繕箇所の説明
-- **添付**: 写真（任意、複数可）
+### PWAで報告（推奨）
+1. ホーム画面からアプリを起動
+2. 報告者名を選択
+3. 写真を撮影（最大3枚）
+4. 音声入力またはテキストで修繕内容を入力
+5. 「送信する」をタップ
+6. AI解析・稟議書生成が自動で実行される
 
-### Chat通知の操作
-1. **下書き通知**が届く
-2. 「Docs確認・修正」で稟議書を確認
-3. 「正式申請する」ボタンを押す
-4. GMへ承認依頼が送信される
-5. GMが「承認する」を押すと代表へ送信
-6. 代表が「承認する」を押すと完了
+### メールで報告（従来方式）
+- 件名: `修繕依頼`
+- 本文: 修繕箇所の説明
+- 添付: 写真（任意）
+
+### 承認フロー
+1. Chat に下書き通知が届く
+2. 「正式申請する」ボタンを押す
+3. GM が「承認する」を押す
+4. 代表が「承認する」を押すと完了
 
 ## 主要な関数
 
+### PWA関連（NEW）
+- `processRepairFromPWA(data)`: PWAからの修繕報告処理
+
+### メール処理
 - `processRepairEmails()`: メール検索・処理
 - `processRepairEmail(message)`: 個別メール処理
+
+### AI・データ処理
 - `analyzeWithGemini(body, images, subject)`: Gemini AI解析
+- `parseAIResult(aiText, ...)`: AI結果を42列にパース
+- `writeRowToSheet(sheet, rowNum, rowData)`: スプレッドシート書き込み
 - `createOrUpdateRingiDoc(rowData, repairId)`: Docs生成
+
+### 通知・承認
 - `sendDraftNotification(...)`: 下書き通知
 - `sendApprovalRequest(...)`: 承認依頼通知
-- `doGet(e)`: Webアプリエントリーポイント
-- `handleApply(sheet, row)`: 正式申請処理
+- `doGet(e)` / `doPost(e)`: Webアプリエントリーポイント
 - `handleApprove(sheet, row, type)`: 承認処理
-- `handleReject(sheet, row, type)`: 否決処理
-- `setupTrigger()`: トリガー設定
 
 ## 注意点
 
@@ -281,6 +304,7 @@ clasp push  # ローカル → GAS
 
 ## 今後の改善点
 
+- [ ] 報告履歴の表示（PWA内）
 - [ ] 見積もり自動取得（RPA連携）
 - [ ] 部材在庫チェック
 - [ ] 業者への自動見積依頼
