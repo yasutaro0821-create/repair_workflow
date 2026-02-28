@@ -1,8 +1,9 @@
-const CACHE_NAME = 'mtinn-repair-v4';
+const CACHE_NAME = 'mtinn-repair-v5';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './js/config.js',
   './js/app.js',
   './js/camera.js',
   './js/voice.js',

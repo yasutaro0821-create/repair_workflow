@@ -36,6 +36,21 @@
     const newReportBtn = document.getElementById('newReportBtn');
     const retryBtn = document.getElementById('retryBtn');
 
+    // config.js の STAFF_NAMES からドロップダウンを動的生成
+    if (typeof STAFF_NAMES !== 'undefined' && Array.isArray(STAFF_NAMES)) {
+      STAFF_NAMES.forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        reporterSelect.appendChild(option);
+      });
+    }
+    // 「その他」オプションを末尾に追加
+    const otherOption = document.createElement('option');
+    otherOption.value = 'その他';
+    otherOption.textContent = 'その他';
+    reporterSelect.appendChild(otherOption);
+
     // 「その他」選択時にテキスト入力を表示
     reporterSelect.addEventListener('change', () => {
       if (reporterSelect.value === 'その他') {
