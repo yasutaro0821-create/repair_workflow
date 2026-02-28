@@ -57,7 +57,7 @@ Google Apps Script + Gemini AI + PWA を使用した修繕報告の自動処理�
 ## データ構造
 
 ### スプレッドシート
-- **ID**: `1ZAUzoCIIy3h6TNiVnYB7_hjWY-Id9oZ_iX1z88M2yNI`
+- **ID**: `main.gs` の `CONFIG.REPAIR_SYSTEM_SHEET_ID` を参照
 - **シート名**: `修繕ログ`
 - **列数**: 42列（A列〜AP列）
 
@@ -101,11 +101,11 @@ Google Apps Script + Gemini AI + PWA を使用した修繕報告の自動処理�
 - AP: 備考
 
 ### ドライブフォルダ
-- **ID**: `1Qz-HYebqH-vfd8-cYD-xoLsOdEL7PEg5`
+- **ID**: `main.gs` の `CONFIG.FOLDER_ID` を参照
 - 稟議書Docsを保存
 
 ### テンプレートDocs
-- **ID**: `1iazbzvlh-VQ046dVgRXyO2BEEWbnGIVHbBTeejeGSjk`
+- **ID**: `main.gs` の `CONFIG.TEMPLATE_DOC_ID` を参照
 - 置換タグ: `{{修繕ID}}`, `{{受付日時}}`, `{{報告者名}}` など
 
 ## 処理フロー
@@ -143,16 +143,18 @@ Google Apps Script + Gemini AI + PWA を使用した修繕報告の自動処理�
 
 ## 設定
 
-### APIキー
-- **Gemini APIキー**: `***REDACTED***`
-- コード内の `CONFIG.GEMINI_API_KEY` に設定済み
+### 機密情報の設定（PropertiesService）
+機密情報はGASのPropertiesServiceで管理します。**コードにハードコードしないでください。**
 
-### Chat Webhook
-- **URL**: `https://chat.googleapis.com/v1/spaces/AAQAmERWyO4/messages?key=...&token=...`
-- コード内の `CONFIG.WEBHOOK_URL` に設定済み
+1. GASエディタで `setupSecrets()` 関数を開く
+2. プレースホルダーを実際の値に書き換える
+3. 関数を実行
+4. ログで設定完了を確認
 
-### WebアプリURL
-- デプロイ後に `CONFIG.SCRIPT_WEB_APP_URL` を更新してください
+必要な設定項目:
+- **GEMINI_API_KEY**: Gemini APIキー
+- **WEBHOOK_URL**: Google Chat Webhook URL
+- **SCRIPT_WEB_APP_URL**: GASデプロイURL
 
 ## ファイル構成
 

@@ -14,20 +14,40 @@
  */
 
 // ====== 設定 ======
+// 機密情報はPropertiesServiceから取得（setupSecrets()で初回設定）
+// 非機密情報のみCONFIGにハードコード
 const CONFIG = {
-  GEMINI_API_KEY: '***REDACTED***', // 新APIキー（更新）
+  get GEMINI_API_KEY() { return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || ''; },
   REPAIR_SYSTEM_SHEET_ID: '1ZAUzoCIIy3h6TNiVnYB7_hjWY-Id9oZ_iX1z88M2yNI',
   SHEET_NAME: '修繕ログ',
   FOLDER_ID: '1Qz-HYebqH-vfd8-cYD-xoLsOdEL7PEg5',
   TEMPLATE_DOC_ID: '1iazbzvlh-VQ046dVgRXyO2BEEWbnGIVHbBTeejeGSjk',
-  WEBHOOK_URL: 'https://chat.googleapis.com/v1/spaces/AAQAmERWyO4/messages?key=***REDACTED***&token=***REDACTED***',
-  SCRIPT_WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbxNdoh_xEOgTzxG-uflNUxm0ELkv28_7sw7s1541ueeQ47f_qdQpahxg2m7ddlFAvvdTQ/exec', // 最新デプロイURL
+  get WEBHOOK_URL() { return PropertiesService.getScriptProperties().getProperty('WEBHOOK_URL') || ''; },
+  get SCRIPT_WEB_APP_URL() { return PropertiesService.getScriptProperties().getProperty('SCRIPT_WEB_APP_URL') || ''; },
   // Geminiモデル設定（2025年12月最新構成）
   GEMINI_MODEL_PRIMARY: 'gemini-2.5-flash',          // 安定版を優先（3.0は404のため一時停止）
   GEMINI_MODEL_FALLBACK: 'gemini-1.5-pro-latest',    // 代替の安定モデル
   EMAIL_SUBJECT: '修繕依頼',
   ENABLE_ERROR_NOTIFICATION: true // エラー通知をChatに送るか（false=ログのみ、true=Chatにも通知）
 };
+
+/**
+ * 初回セットアップ: GASエディタで手動実行してください。
+ * 機密情報をPropertiesServiceに保存します。
+ * 実行後、このコメント内の値を実際の値に置き換えてから実行してください。
+ */
+function setupSecrets() {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperties({
+    'GEMINI_API_KEY': 'YOUR_GEMINI_API_KEY_HERE',
+    'WEBHOOK_URL': 'YOUR_WEBHOOK_URL_HERE',
+    'SCRIPT_WEB_APP_URL': 'YOUR_DEPLOY_URL_HERE'
+  });
+  Logger.log('Secrets saved to PropertiesService');
+  Logger.log('GEMINI_API_KEY: ' + (props.getProperty('GEMINI_API_KEY') ? 'SET' : 'EMPTY'));
+  Logger.log('WEBHOOK_URL: ' + (props.getProperty('WEBHOOK_URL') ? 'SET' : 'EMPTY'));
+  Logger.log('SCRIPT_WEB_APP_URL: ' + (props.getProperty('SCRIPT_WEB_APP_URL') ? 'SET' : 'EMPTY'));
+}
 
 // ====== 列定義（42列） ======
 const COL = {

@@ -4,7 +4,7 @@
  */
 (() => {
   // GAS Web App URL（デプロイ後に更新してください）
-  const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxNdoh_xEOgTzxG-uflNUxm0ELkv28_7sw7s1541ueeQ47f_qdQpahxg2m7ddlFAvvdTQ/exec';
+  const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwSaq3Nt11DNMcwITRzUWR2aEzRiARa-davYZSEUZASt3_Jsy0WyMkHT1dy4ZtpQa0zkQ/exec';
 
   // IndexedDB設定（オフラインキュー用）
   const DB_NAME = 'mtinn-repair';
