@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mtinn-repair-v1';
+const CACHE_NAME = 'mtinn-repair-v3';
 const ASSETS = [
   './',
   './index.html',
