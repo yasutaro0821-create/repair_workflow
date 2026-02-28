@@ -1611,7 +1611,8 @@ function sendErrorNotification(message) {
 function doPost(e) {
   try {
     // === PWAからの修繕報告（JSON POST）===
-    if (e.postData && e.postData.type === 'application/json') {
+    // CORSプリフライト回避のため text/plain でも受付可能
+    if (e.postData && e.postData.contents) {
       try {
         const jsonData = JSON.parse(e.postData.contents);
         if (jsonData.action === 'repair_report') {
@@ -1621,11 +1622,8 @@ function doPost(e) {
             .setMimeType(ContentService.MimeType.JSON);
         }
       } catch (jsonError) {
-        Logger.log(`【PWA】JSONパースエラー: ${jsonError.toString()}`);
-        return ContentService.createTextOutput(JSON.stringify({
-          success: false,
-          error: jsonError.toString()
-        })).setMimeType(ContentService.MimeType.JSON);
+        // JSONパースに失敗した場合は既存のコメント処理にフォールスルー
+        Logger.log(`【PWA】JSONパース失敗（コメント処理にフォールスルー）: ${jsonError.toString()}`);
       }
     }
 

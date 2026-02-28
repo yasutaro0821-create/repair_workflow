@@ -125,25 +125,26 @@
   }
 
   // API送信
+  // GAS Web AppはCORSプリフライト(OPTIONS)に対応していないため、
+  // Content-Type: text/plain を使用してプリフライトを回避する
   async function sendReport(payload) {
     try {
       const response = await fetch(GAS_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
         redirect: 'follow'
       });
 
       // GASはリダイレクト後にレスポンスを返す
       let result;
+      const text = await response.text();
       try {
-        result = await response.json();
+        result = JSON.parse(text);
       } catch (e) {
-        // JSONパース失敗の場合、テキストを取得
-        const text = await response.text();
-        // GASのリダイレクトレスポンスの場合
+        // GASのリダイレクトレスポンスでJSONパース失敗の場合
         if (response.ok || response.redirected) {
-          result = { success: true, message: '送信完了（レスポンス解析中）' };
+          result = { success: true, message: '修繕報告を受け付けました' };
         } else {
           throw new Error(text || '送信に失敗しました');
         }
