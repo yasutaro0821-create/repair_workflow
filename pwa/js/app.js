@@ -125,38 +125,23 @@
   }
 
   // API送信
-  // GAS Web AppはCORSプリフライト(OPTIONS)に対応していないため、
-  // Content-Type: text/plain を使用してプリフライトを回避する
+  // GAS Web Appは302リダイレクトでCORSヘッダーを返さないため、
+  // mode: 'no-cors' を使用。レスポンスは読めないが、リクエストは届く。
   async function sendReport(payload) {
     try {
       const response = await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
+        mode: 'no-cors',
         redirect: 'follow'
       });
 
-      // GASはリダイレクト後にレスポンスを返す
-      let result;
-      const text = await response.text();
-      try {
-        result = JSON.parse(text);
-      } catch (e) {
-        // GASのリダイレクトレスポンスでJSONパース失敗の場合
-        if (response.ok || response.redirected) {
-          result = { success: true, message: '修繕報告を受け付けました' };
-        } else {
-          throw new Error(text || '送信に失敗しました');
-        }
-      }
-
-      if (result.success) {
-        document.getElementById('successMessage').textContent =
-          result.message || '修繕報告を受け付けました';
-        showSection('success');
-      } else {
-        throw new Error(result.error || '不明なエラー');
-      }
+      // no-corsモードではopaqueレスポンス（status=0）が返る
+      // リクエスト自体はGASに届いて処理されるため、送信成功とする
+      document.getElementById('successMessage').textContent =
+        '修繕報告を送信しました。AI解析・稟議書生成が自動で実行されます。';
+      showSection('success');
     } catch (error) {
       console.error('送信エラー:', error);
 
