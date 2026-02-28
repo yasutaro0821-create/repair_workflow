@@ -1858,6 +1858,15 @@ function doGet(e) {
     
     Logger.log(`取得したパラメータ: action="${action}", row=${row}, type="${type}", comment=${comment ? 'あり' : 'なし'}`);
     
+    // スタッフ名簿取得（PWAから呼び出し）
+    if (action === 'staff_list') {
+      Logger.log('【スタッフ名簿】名簿取得リクエスト');
+      const names = getStaffNames();
+      const output = ContentService.createTextOutput(JSON.stringify({ staff: names }))
+        .setMimeType(ContentService.MimeType.JSON);
+      return output;
+    }
+
     // 正式申請の場合は、承認リクエストを送信して成功画面を返す
     if (action === 'apply') {
       Logger.log('【正式申請】正式申請アクションを検知しました');
@@ -2721,6 +2730,60 @@ function checkTriggers() {
   }
   
   return triggers.length;
+}
+
+// ====== スタッフ名簿管理 ======
+const STAFF_SHEET_NAME = 'スタッフ名簿';
+
+/**
+ * スタッフ名簿シートから名前一覧を取得
+ */
+function getStaffNames() {
+  const ss = SpreadsheetApp.openById(CONFIG.REPAIR_SYSTEM_SHEET_ID);
+  let sheet = ss.getSheetByName(STAFF_SHEET_NAME);
+  if (!sheet) {
+    Logger.log('【スタッフ名簿】シートが存在しないため作成します');
+    sheet = initStaffSheet();
+  }
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  return values.map(r => r[0]).filter(name => name && String(name).trim() !== '');
+}
+
+/**
+ * スタッフ名簿シートを初期化（初回のみ）
+ * GASエディタから手動実行してください
+ */
+function initStaffSheet() {
+  const ss = SpreadsheetApp.openById(CONFIG.REPAIR_SYSTEM_SHEET_ID);
+  let sheet = ss.getSheetByName(STAFF_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(STAFF_SHEET_NAME);
+  }
+
+  // ヘッダー
+  sheet.getRange(1, 1).setValue('スタッフ名');
+  sheet.getRange(1, 1).setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff');
+  sheet.setColumnWidth(1, 200);
+
+  // 既存データがなければ初期名簿を入力
+  if (sheet.getLastRow() < 2) {
+    const names = [
+      '村松 俊伊', '三本木 伸一', '安田 高志', '日下部 愛菜',
+      '高山 博登', '長谷川 栄夫', '遠藤 良男', '國島 宏之',
+      '渡辺 直美', '山内 啓子', '古川 タミ子', '大内 みきこ',
+      '三瓶 ヒナ子', '村山 久美子', '渡部 祝子', '橋本 孝',
+      '遠藤 詩織', '芦野 由美子', '三浦 勝幸', '渡邊 光子',
+      '佐原 ゆい', '佐原 あかね', '渡辺 幸子', '本間 嬉美',
+      '吉村 亮太', '大橋 福子', '渡辺 和子',
+    ];
+    const data = names.map(n => [n]);
+    sheet.getRange(2, 1, data.length, 1).setValues(data);
+  }
+
+  Logger.log(`【スタッフ名簿】シート作成完了（${sheet.getLastRow() - 1}名）`);
+  return sheet;
 }
 
 // ====== 承認/否決/コメント処理のテスト関数 ======

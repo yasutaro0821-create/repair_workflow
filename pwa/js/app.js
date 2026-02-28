@@ -28,6 +28,64 @@
     }
   }
 
+  // スタッフ名簿をスプレッドシートから取得（GAS経由）
+  // 失敗時は config.js の STAFF_NAMES をフォールバックとして使用
+  async function fetchStaffNames() {
+    try {
+      const res = await fetch(GAS_API_URL + '?action=staff_list', {
+        method: 'GET',
+        redirect: 'follow'
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data.staff && Array.isArray(data.staff) && data.staff.length > 0) {
+        // 取得成功 → ローカルにキャッシュ
+        localStorage.setItem('staffNames', JSON.stringify(data.staff));
+        return data.staff;
+      }
+    } catch (e) {
+      console.warn('スタッフ名簿取得失敗（フォールバック使用）:', e);
+    }
+    // フォールバック: localStorage キャッシュ → config.js
+    const cached = localStorage.getItem('staffNames');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (_) { /* ignore */ }
+    }
+    if (typeof STAFF_NAMES !== 'undefined' && Array.isArray(STAFF_NAMES)) {
+      return STAFF_NAMES;
+    }
+    return [];
+  }
+
+  // ドロップダウンにスタッフ名を反映
+  function populateStaffDropdown(names) {
+    const select = document.getElementById('reporter');
+    // 既存のオプション（「選択してください」以外）をクリア
+    while (select.options.length > 1) {
+      select.remove(1);
+    }
+    names.forEach((name) => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+    // 「その他」オプションを末尾に追加
+    const otherOption = document.createElement('option');
+    otherOption.value = 'その他';
+    otherOption.textContent = 'その他';
+    select.appendChild(otherOption);
+
+    // 保存された報告者名を復元
+    const savedReporter = localStorage.getItem('lastReporter');
+    if (savedReporter) {
+      const found = Array.from(select.options).find((o) => o.value === savedReporter);
+      if (found) {
+        select.value = savedReporter;
+      }
+    }
+  }
+
   // フォーム初期化
   function initForm() {
     const form = document.getElementById('repairForm');
@@ -36,20 +94,17 @@
     const newReportBtn = document.getElementById('newReportBtn');
     const retryBtn = document.getElementById('retryBtn');
 
-    // config.js の STAFF_NAMES からドロップダウンを動的生成
+    // まず config.js のデータで即座に表示（UX優先）
     if (typeof STAFF_NAMES !== 'undefined' && Array.isArray(STAFF_NAMES)) {
-      STAFF_NAMES.forEach((name) => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        reporterSelect.appendChild(option);
-      });
+      populateStaffDropdown(STAFF_NAMES);
     }
-    // 「その他」オプションを末尾に追加
-    const otherOption = document.createElement('option');
-    otherOption.value = 'その他';
-    otherOption.textContent = 'その他';
-    reporterSelect.appendChild(otherOption);
+
+    // 非同期でスプレッドシートから最新名簿を取得して上書き
+    fetchStaffNames().then((names) => {
+      if (names.length > 0) {
+        populateStaffDropdown(names);
+      }
+    });
 
     // 「その他」選択時にテキスト入力を表示
     reporterSelect.addEventListener('change', () => {
@@ -63,15 +118,6 @@
         reporterCustom.value = '';
       }
     });
-
-    // 保存された報告者名を復元
-    const savedReporter = localStorage.getItem('lastReporter');
-    if (savedReporter) {
-      const option = Array.from(reporterSelect.options).find((o) => o.value === savedReporter);
-      if (option) {
-        reporterSelect.value = savedReporter;
-      }
-    }
 
     // フォーム送信
     form.addEventListener('submit', handleSubmit);
